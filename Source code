@@ -1,0 +1,143 @@
+#define BLYNK_PRINT Serial
+#include <Wire.h>
+#include <ESP32Servo.h>
+ Servo servo_azi; 
+ Servo servo_ele;
+
+// Enter your Auth token
+#define BLYNK_TEMPLATE_ID "TMPL3kNA9OriR"
+#define BLYNK_TEMPLATE_NAME "IOT ANTENNA POSIOTIONING SYSTEM"
+#define BLYNK_AUTH_TOKEN "i0apcf2dvm3dedIpI32m52KlX1e2jDhP"
+#include <WiFi.h>
+#include <Blynk.h>
+#include <BlynkSimpleEsp32.h>
+BlynkTimer timer;
+
+//Enter your WIFI SSID and password
+char auth[] = BLYNK_AUTH_TOKEN;
+char ssid[] = "TASKMASTER1";
+char pass[] = "123456789";
+#include <Wire.h>
+#include "DHT.h"
+#define DHTPIN 25
+#define DHTTYPE DHT11
+#include <LiquidCrystal_I2C.h>
+LiquidCrystal_I2C lcd(0x27,16, 2);
+DHT dht(DHTPIN, DHTTYPE);
+float humi=0;
+ float tempC=0;
+ #define ldr_pin 36
+ int ldr_value = 0;
+ int light_intens_per = 0; 
+ int value1 =0;
+
+ int value2 =0;
+
+void setup() {
+  Serial.begin(115200);
+  servo_azi.attach(18); 
+  servo_ele.attach(19);    
+  //servo_azi.write(0); 
+  //servo_ele.write(0);
+  Blynk.begin(auth, ssid, pass);
+   Wire.begin();
+   dht.begin();
+lcd.begin();
+  lcd.setCursor(0,0);  //Show "TIME" on the LCD
+
+  lcd.setCursor (0,0);
+  lcd.print("IOT ANTENNA  ");
+  lcd.setCursor (0,1);
+  lcd.print("POSITIONING");
+  delay (3000);
+  lcd.clear();
+   timer.setInterval(4000L, sendSensor);
+}
+
+BLYNK_WRITE(V0) {
+  value1 = param.asInt();
+  value1 = map(value1, 0, 180,0 , 180);
+  servo_azi.write(value1);
+  delay(10);
+  Serial.println(value1);
+
+  
+}
+BLYNK_WRITE(V1) {
+  value2 = param.asInt();
+  value2 = map(value2, 0, 180, 0, 180);
+   servo_ele.write(value2);
+  delay(10);
+  Serial.println(value2);
+  
+}
+void sendSensor(){
+  
+
+Blynk.virtualWrite(V2, humi);
+Blynk.virtualWrite(V3, tempC);
+Blynk.virtualWrite(V4, light_intens_per);
+  
+}
+
+void loop() {
+  Blynk.run();
+  timer.run();
+  read_sensors();
+  lcd_data_display();
+  
+  delay(500);
+}
+
+void read_sensors()
+{
+  humi  = dht.readHumidity();
+  tempC = dht.readTemperature();
+  if (isnan(humi) || isnan(tempC)) {
+    Serial.println("Failed to read from DHT sensor!");
+  } else {
+    Serial.print("Humidity: ");
+    Serial.print(humi);
+    Serial.print("%");
+
+    Serial.print("  |  "); 
+
+    Serial.print("Temperature: ");
+    Serial.print(tempC);
+    Serial.println("°C ~ ");
+    
+  }
+   ldr_value=analogRead(ldr_pin);
+    Serial.print("LDR: ");
+    Serial.print(ldr_value);
+  light_intens_per = map(ldr_value, 4095, 0, 0, 100);
+}
+
+void lcd_data_display()
+{
+  lcd.clear();
+  int humidity = humi;
+  int temp = tempC;
+  lcd.setCursor(0,0); 
+  lcd.print("H");
+  lcd.setCursor(3,0); 
+  lcd.print(humidity); 
+  lcd.setCursor(6,0); 
+  lcd.print("t");
+  lcd.setCursor(8,0); 
+  lcd.print(temp); 
+  lcd.setCursor(11,0); 
+  lcd.print("L:");
+  lcd.setCursor(13,0); 
+  lcd.print(light_intens_per);
+   
+  lcd.setCursor(0,1); 
+  lcd.print("AZI");
+  lcd.setCursor(5,1); 
+  lcd.print(value1);
+  lcd.setCursor(9,1); 
+  lcd.print("ELE");
+  lcd.setCursor(13,1); 
+  lcd.print(value2);
+
+}
